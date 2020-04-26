@@ -6,3 +6,14 @@
 - Декларатив - это когда говориш что нужно и все, к этому и относится терраформ 
 - Идемпотентность - целостность, конфигурация == среда
 - Используется Push метод
+
+```
+git ls-tree -r master
+git rm -r --cached master
+```
+```
+terraform init
+terraform plan -out m3.tfplan
+terraform apply "m3.tfplan"
+terraform destroy
+```
