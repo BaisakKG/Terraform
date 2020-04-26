@@ -1,0 +1,2 @@
+git ls-tree -r master
+git rm -r --cached master
