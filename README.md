@@ -11,11 +11,25 @@
 git ls-tree -r master
 git rm -r --cached master
 ```
+
+- Команды конфигурации
 ```
 terraform init
-terraform plan -out m3.tfplan
+terraform plan -var-file="terraform.tfvars"  -out m3.tfplan
 terraform apply "m3.tfplan"
 terraform destroy
 terraform show
 terraform output
+terraform fmt
+```
+
+- Тестирование функций
+Сначала надо инициализировать а после через тераформ консол работать
+```
+terraform console
+min(23,44,2)
+cidrsubnet(var.network_address_space, 8, 0)
+cidrhost(cidrsubnet(var.network_address_space, 8, 0),5)
+lookup(local.common_tags, "BillingCode", "Unknown")
+local.s3_bucket_name
 ```
