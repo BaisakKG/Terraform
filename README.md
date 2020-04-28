@@ -60,3 +60,5 @@ terraform plan -out prod.tfplan
 terraform apply "prod.tfplan"
 
 ```
+- Есть готовые модули
+**https://registry.terraform.io/**
