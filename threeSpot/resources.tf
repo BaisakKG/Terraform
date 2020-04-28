@@ -17,17 +17,6 @@ providers "azurerm" {
     tenant_id = var.tenant_id
     alias = "arm-1"
 
-###LOCAL
-
-locals {
-    common_tags = {
-        BillingCode = var.billing_code_tag
-        Evironment = var.environment_tag
-    }
-
-    s3_bucket_name = "${var.bucket_name_prefix}-${var.environment_tag}-${random_integer.rand.result}"
-}
-
 ### DATA
 
 data "aws_availability_zones" "available" {}
@@ -61,28 +50,27 @@ resource "random_integer" "rand" {
 }
 
 # Network
-
 resource "aws_vpc" "vpc" {
-    cidr_block = var.network_address_space
+    cidr_block = var.network_address_space[terraform.workspace]
     enable_dns_hostname = "true"
 
-    tags = merge(local.common_tags, { Name = "${var.environmetn_tag}-vpc" })
+    tags = merge(local.common_tags, { Name = "${local.env_name}-vpc" })
 }
 
 resource "aws_internet_gateway" "igw" {
     vpc_id = aws_vpc.vpc.id
 
-    tags = merge(local.common_tags, { Name = "${var.environmetn_tag}-igw" })
+    tags = merge(local.common_tags, { Name = "${local.env_name}-igw" })
 }
 
 resource "aws_subnet" "subnet" {
-    count = var.subnet_count
-    cidr_block = cidrsubnet(var.network__address_space, 8, count.index)
+    count = var.subnet_count[terraform.workspace]
+    cidr_block = cidrsubnet(var.network__address_space[terraform.workspace], 8, count.index)
     vpc_id = aws_vpc.vpc.id
     map_public_ip_on_launch = true
     availability_zone = data.aws_availability_zones.available.names[count.index]
 
-    tags = merge(local.common_tags, { Name = "${var.environmetn_tag}-subnet${count.index+1}" })
+    tags = merge(local.common_tags, { Name = "${local.env_name}-subnet${count.index+1}" })
 
 }
 
@@ -98,7 +86,7 @@ resource "aws_route_table" "rtb" {
 }
 
 resource "aws_route_table_association" "rta-subnet" {
-    count = var.subnet_count
+    count = var.subnet_count[terraform.workspace]
     subnet_id = aws_subnet.subnet[count.index].id
     route_table_id = aws_route_table.rtb.id
 }
@@ -140,7 +128,7 @@ resource "aws_security_group" "nginx-sg" {
         from_port = 80
         to_port = 80
         protocol = "tcp"
-        cidr_blocks = [var.network_address_space]
+        cidr_blocks = [var.network_address_space[terraform.workspace]]
     }
     egress {
         from_port = 0
@@ -153,7 +141,7 @@ resource "aws_security_group" "nginx-sg" {
 #S3 Bucket config
 
 resource "aws_iam_role" "allow_nginx_s3" {
-    name = "allow_nginx_s3"
+    name = "${local.env_name}_allow_nginx_s3"
 
     assume_role_policy = <<EOF
   {
@@ -172,12 +160,12 @@ resource "aws_iam_role" "allow_nginx_s3" {
   EOF
 
 resource "aws_iam_instance_profile" "nginx_profile" {
-    name = "nginx_profile"
+    name = "${local.env_name}_nginx_profile"
     role = aws_iam_role.allow_nginx_s3.name
 }
 
 resource "aws_iam_role_policy" "allow_s3_all" {
-    name = "allow_s3_all"
+    name = "${local.env_name}_allow_s3_all"
     role = aws_iam_role.allow_nginx_s3.name
 
     policy = <<EOF
@@ -203,7 +191,7 @@ resource "aws_s3_bucket" "web_bucket" {
     acl = "private"
     force_destroy = "true"
 
-    tags = merge(local.common_tags, { Name = "${var.environmetn_tag}-web-bucket" })
+    tags = merge(local.common_tags, { Name = "${local.env_name}-web-bucket" })
 }
  
 
@@ -239,10 +227,10 @@ resource "aws_elb" "web" {
 ### INSTANCE
 
 resource "aws_instance" "nginx" {
-    count = var.instance_count
+    count = var.instance_count[terraform.workspace]
     ami = data.aws_ami.aws-linux.id
-    instance_type = "t2.micro"
-    subnet_id = aws_subnet.subnet[count.index % var.subnet_count].id
+    instance_type = var.instance_size[terraform.workspace]
+    subnet_id = aws_subnet.subnet[count.index % var.subnet_count[terraform.workspace]].id
     key_name = var.key_name
     vpc_security_group_ids = [aws_security_group.nginx-sg.id]
     iam_instance_profile = aws_iam_instance_profile.nginx_profile.name
@@ -302,7 +290,7 @@ resource "aws_instance" "nginx" {
         ]
     }
 
-    tags = merge(local.common_tags, { Name = "${var.environmetn_tag}-nginx${count.index+1}" })
+    tags = merge(local.common_tags, { Name = "${local.env_name}-nginx${count.index+1}" })
 }
 
 # Azure RM DNS
@@ -315,7 +303,7 @@ resource "azurerm_dns_cname_record" "elb" {
     record = aws_elb.web.dns_name
     provider = azurerm.arm-1
 
-    tags = merge(local.common_tags, { Name = "${var.environmetn_tag}-website" })
+    tags = merge(local.common_tags, { Name = "${local.env_name}-website" })
 }
 
 

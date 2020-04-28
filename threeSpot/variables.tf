@@ -32,3 +32,15 @@ variable "tenant_id" {}
 variable "dns_zone_name" {}
 variable "dns_resource_group" {}
 
+
+###LOCAL
+
+locals {
+    env_name = lower(terraform.workspace)
+    common_tags = {
+        BillingCode = var.billing_code_tag
+        Evironment = local.env_name
+    }
+
+    s3_bucket_name = "${var.bucket_name_prefix}-${local.env_name}-${random_integer.rand.result}"
+}

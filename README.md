@@ -33,3 +33,30 @@ cidrhost(cidrsubnet(var.network_address_space, 8, 0),5)
 lookup(local.common_tags, "BillingCode", "Unknown")
 local.s3_bucket_name
 ```
+- Работа с несколькими средами
+Вариант с подпапками
+```
+terraform plan -state=".\dev\dev.state"
+    -var-file="common.tfvars"
+    -var-file=".\dev\dev.tfvars"
+```
+- Использование Workspace
+Чтобы это использовать надо переделать переменные, пример в папке threeSpot
+```
+terraform init
+terraform workspace new Development
+terraform plan -out dev.tfplan
+terraform apply "dev.tfplan"
+
+terraform workspace new UAT
+terraform plan -out uat.tfplan
+terraform apply "uat.tfplan"
+
+#export AWS_ACCESS_KEY_ID="sd"
+#export AWS_SECRET_ACCESS_KEY="sd"
+
+terraform workspace new Production
+terraform plan -out prod.tfplan
+terraform apply "prod.tfplan"
+
+```
